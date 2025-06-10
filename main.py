@@ -37,4 +37,76 @@ locations_data = {
         37.8199, 37.8080, 37.8651, 37.7749, 33.8121, 34.0900, 32.8500, 34.1185, 34.0089, 34.0781
     ],
     "lon": [
-        -122.4783, -122.4098, -119.5383, -122.4194, -117.9190, -118.
+        -122.4783, -122.4098, -119.5383, -122.4194, -117.9190, -118.3446, -117.2720, -118.3004, -118.4984, -118.4757
+    ]
+}
+df = pd.DataFrame(locations_data)
+
+st.markdown("---")
+
+## 📍 어디로 떠나볼까요?
+
+### 🗺️ 관광지와 맛집 위치
+
+# 사이드바 추가
+st.sidebar.header("필터링 옵션")
+# 사용자 입력: 지역 선택 (예시로 도시명 추가)
+city_options = ["전체"] + sorted(list(set(["샌프란시스코", "로스앤젤레스", "요세미티", "샌디에이고"]))) # 도시 추가
+selected_city = st.sidebar.selectbox("도시 선택:", city_options)
+
+# 사용자 입력: 카테고리 선택
+type_options = ["전체"] + list(df["type"].unique())
+selected_type = st.sidebar.selectbox("카테고리 선택:", type_options)
+
+# 데이터 필터링
+filtered_df = df.copy()
+if selected_city != "전체":
+    if selected_city == "샌프란시스코":
+        filtered_df = filtered_df[filtered_df["name"].isin(["샌프란시스코 금문교", "인앤아웃 버거 (In-N-Out)", "필즈 커피 (Philz Coffee)"])]
+    elif selected_city == "로스앤젤레스":
+        filtered_df = filtered_df[filtered_df["name"].isin(["디즈니랜드 리조트", "Roscoe's Chicken and Waffles", "그리피스 천문대", "산타모니카 피어", "게티 센터"])]
+    elif selected_city == "요세미티":
+        filtered_df = filtered_df[filtered_df["name"].isin(["요세미티 국립공원"])]
+    elif selected_city == "샌디에이고":
+        filtered_df = filtered_df[filtered_df["name"].isin(["샌디에이고 라호야 비치"])]
+
+if selected_type != "전체":
+    filtered_df = filtered_df[filtered_df["type"] == selected_type]
+
+# 지도 초기화 (필터링된 데이터의 중앙을 기준으로)
+if not filtered_df.empty:
+    center_lat = filtered_df["lat"].mean()
+    center_lon = filtered_df["lon"].mean()
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=6)
+else: # 필터링된 데이터가 없을 경우 기본값으로 초기화
+    m = folium.Map(location=[36.7783, -119.4179], zoom_start=6)
+
+
+# 마커 추가
+for idx, loc in filtered_df.iterrows(): # DataFrame 반복 시 iterrows 사용
+    icon_color = "blue" if loc["type"] == "관광지" else "red"
+    folium.Marker(
+        location=[loc["lat"], loc["lon"]],
+        popup=f"<b>{loc['name']}</b><br>{loc['desc']}",
+        tooltip=loc["name"],
+        icon=folium.Icon(color=icon_color)
+    ).add_to(m)
+
+st_data = st_folium(m, width=1000, height=600)
+
+st.markdown("---")
+
+## ✨ 세부 정보 및 추천
+
+# 필터링된 결과 목록 출력
+if not filtered_df.empty:
+    st.markdown("### 📝 선택된 장소 목록:")
+    for idx, row in filtered_df.iterrows():
+        st.markdown(f"- **{row['name']}** ({row['type']}): {row['desc']}")
+else:
+    st.info("선택하신 조건에 해당하는 장소가 없습니다. 다른 필터를 시도해 보세요.")
+
+st.markdown("---")
+
+st.markdown("### ℹ️ Tip")
+st.info("지도에서 마커를 클릭하면 설명이 나와요. 맛집은 **빨간색**, 관광지는 **파란색**이에요. 왼쪽 사이드바에서 원하는 **도시**와 **카테고리**를 선택하여 맞춤 정보를 확인해 보세요!")
