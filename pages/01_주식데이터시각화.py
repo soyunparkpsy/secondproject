@@ -2,145 +2,154 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import datetime
-import time # time.sleep을 위해 추가
+import time
 
-st.set_page_config(layout="wide") # 페이지 레이아웃을 넓게 설정
+# --- 1. 페이지 설정 ---
+st.set_page_config(
+    page_title="글로벌 Top 기업 주가 시각화",
+    page_icon="📈",
+    layout="wide"
+)
+
 st.title('글로벌 시총 Top 기업 주가 변화 시각화 (최근 3년)')
+st.markdown("""
+이 앱은 선택된 글로벌 시가총액 상위 기업들의 지난 3년간 주가 변화를 보여줍니다.
+데이터 로딩 실패 시 재시도 로직이 포함되어 있습니다.
+""")
 
-# --- 1. 기업 티커 설정 ---
-# 현재 시점의 글로벌 시총 Top 기업 티커를 여기에 입력하세요.
-# 이 리스트는 실시간으로 변동하므로, 필요에 따라 업데이트해야 합니다.
-top_10_tickers = {
+# --- 2. 기업 티커 및 날짜 범위 설정 ---
+# **주의: 이 리스트는 실시간으로 변동하는 시가총액 순위를 반영하지 않습니다.**
+# 필요에 따라 최신 정보를 기반으로 업데이트해주세요.
+TOP_COMPANIES_TICKERS = {
     "Apple": "AAPL",
     "Microsoft": "MSFT",
     "Alphabet (Google)": "GOOGL",
     "Amazon": "AMZN",
     "NVIDIA": "NVDA",
-    "Meta Platforms": "META", # 예시 추가
-    "Tesla": "TSLA", # 예시 추가
-    "Saudi Aramco": "2222.SR", # 사우디 아람코 (티커가 다를 수 있음)
-    "Berkshire Hathaway": "BRK-B", # BRK-A는 가격이 너무 높아 시각화에 부적합할 수 있으므로 B주 사용
-    "Eli Lilly": "LLY" # 예시 추가
+    "Meta Platforms": "META",
+    "Tesla": "TSLA",
+    "Broadcom": "AVGO", # 예시 추가
+    "Johnson & Johnson": "JNJ", # 예시 추가
+    "Samsung Electronics": "005930.KS", # 한국 주식 예시 (티커 다름)
+    "Saudi Aramco": "2222.SR" # 사우디 아람코 예시 (티커 다름)
 }
 
-# --- 2. 날짜 범위 설정 ---
-# 데이터 조회 기간을 최근 3년으로 설정합니다.
-# yfinance가 당일 데이터를 즉시 제공하지 않을 수 있으므로, 종료일을 하루 전으로 설정합니다.
-end_date = datetime.date.today() - datetime.timedelta(days=1)
-start_date = end_date - datetime.timedelta(days=3 * 365) # 대략 3년
+# 날짜 범위 설정: 오늘 날짜에서 하루 전을 종료일로, 3년 전을 시작일로 설정
+# yfinance가 당일 데이터를 즉시 제공하지 않을 수 있어 안정성을 높임
+END_DATE = datetime.date.today() - datetime.timedelta(days=1)
+START_DATE = END_DATE - datetime.timedelta(days=3 * 365) # 대략 3년
 
-st.info(f"📈 **데이터 조회 기간:** {start_date} 부터 {end_date} 까지")
+st.info(f"✨ **데이터 조회 기간:** `{START_DATE}` 부터 `{END_DATE}` 까지")
 
-# --- 3. 주가 데이터 로딩 ---
-all_stocks_adj_close = {} # 각 기업의 'Adj Close' Series를 저장할 딕셔너리
-MAX_RETRIES = 3 # 최대 재시도 횟수
-RETRY_DELAY = 5 # 재시도 간격 (초)
-
-st.subheader("데이터 로딩 중...")
-loading_bar = st.progress(0)
-ticker_count = len(top_10_tickers)
-
-for i, (company_name, ticker) in enumerate(top_10_tickers.items()):
-    attempts = 0
-    data_loaded = False
-    while attempts < MAX_RETRIES:
-        try:
-            # auto_adjust=False로 'Adj Close' 컬럼을 명시적으로 가져오도록 시도
-            # progress=False로 다운로드 진행 메시지 숨김
-            data = yf.download(ticker, start=start_date, end=end_date, auto_adjust=False, progress=False)
+# --- 3. 주가 데이터 로딩 함수 ---
+# @st.cache_data 데코레이터를 사용하여 데이터 로딩 속도 향상 및 재실행 방지
+# 인자가 변경되지 않으면 캐시된 데이터를 사용
+@st.cache_data(ttl=3600) # 1시간마다 데이터 갱신
+def load_stock_data(tickers, start, end, max_retries=3, retry_delay=5):
+    """
+    주가 데이터를 yfinance에서 가져오는 함수.
+    데이터 로딩 실패 시 재시도 로직을 포함합니다.
+    """
+    all_adj_close_data = {}
+    st.subheader("데이터 로딩 중...")
+    progress_bar = st.progress(0)
+    
+    total_tickers = len(tickers)
+    for i, (company_name, ticker) in enumerate(tickers.items()):
+        attempts = 0
+        data_loaded = False
+        while attempts < max_retries:
+            try:
+                # auto_adjust=True: 배당 및 분할이 조정된 최종 'Close' 가격을 직접 반환
+                # 이렇게 하면 'Adj Close' 컬럼이 없는 문제를 피할 수 있으며,
+                # 반환되는 데이터프레임에는 'Open', 'High', 'Low', 'Close', 'Volume'만 포함됩니다.
+                data = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False)
+                
+                if not data.empty and 'Close' in data.columns:
+                    all_adj_close_data[company_name] = data['Close'].rename(company_name)
+                    st.success(f"✔️ **{company_name}** (`{ticker}`) 데이터 로드 성공!")
+                    data_loaded = True
+                    break # 데이터 로딩 성공, 재시도 루프 탈출
+                else:
+                    st.warning(f"⚠️ 시도 {attempts + 1}/{max_retries}: {company_name} (`{ticker}`) 데이터가 비어있거나 'Close' 컬럼을 찾을 수 없습니다.")
+            except Exception as e:
+                st.error(f"❌ 시도 {attempts + 1}/{max_retries}: {company_name} (`{ticker}`) 데이터 로딩 중 오류 발생: {e}")
             
-            if not data.empty and 'Adj Close' in data.columns:
-                all_stocks_adj_close[company_name] = data['Adj Close'].rename(company_name)
-                st.success(f"✔️ {company_name} ({ticker}) 데이터 로드 성공!")
-                data_loaded = True
-                break # 데이터 성공적으로 가져왔으므로 루프 탈출
-            else:
-                st.warning(f"⚠️ 시도 {attempts + 1}/{MAX_RETRIES}: {company_name} ({ticker}) 에 대한 데이터를 가져올 수 없거나 'Adj Close' 컬럼이 없습니다. (데이터가 비어있을 수 있습니다.)")
-                attempts += 1
-                time.sleep(RETRY_DELAY) # 재시도 전 잠시 대기
-        except Exception as e:
-            st.error(f"❌ 시도 {attempts + 1}/{MAX_RETRIES}: {company_name} ({ticker}) 데이터 로딩 중 오류 발생: {e}")
             attempts += 1
-            time.sleep(RETRY_DELAY) # 재시도 전 잠시 대기
-    
-    if not data_loaded:
-        st.error(f"🔴 {company_name} ({ticker}) 데이터를 {MAX_RETRIES}번 시도 후에도 가져오지 못했습니다.")
-    
-    loading_bar.progress((i + 1) / ticker_count)
-
-loading_bar.empty() # 로딩 바 제거
-
-# --- 4. 데이터 처리 및 시각화 ---
-if all_stocks_adj_close: # 하나라도 성공적으로 로드된 데이터가 있다면
-    # 모든 Series를 합쳐 DataFrame 생성 (인덱스(날짜)가 다르면 자동으로 NaN으로 채워짐)
-    pivot_df = pd.concat(all_stocks_adj_close.values(), axis=1)
-    pivot_df.columns = all_stocks_adj_close.keys() # 컬럼 이름을 기업 이름으로 설정
-
-    if not pivot_df.empty:
-        # 정규화된 주가 데이터 생성 (첫 유효값 기준)
-        # 모든 컬럼에 대해 NaN이 아닌 첫 번째 값을 기준으로 정규화
-        initial_values = pd.Series(dtype='float64')
-        for col in pivot_df.columns:
-            first_non_nan_idx = pivot_df[col].first_valid_index()
-            if first_non_nan_idx is not None:
-                initial_values[col] = pivot_df.loc[first_non_nan_idx, col]
-            else:
-                initial_values[col] = pd.NA # 해당 컬럼에 유효한 값이 없으면 NA
-
-        normalized_df = pd.DataFrame()
-        if not initial_values.dropna().empty: # 초기값이 있는 컬럼만 정규화
-            normalized_df = pivot_df / initial_values * 100
-            # 모든 값이 NaN인 컬럼은 제거 (예: 데이터 로딩 실패한 기업)
-            normalized_df = normalized_df.dropna(axis=1, how='all')
+            time.sleep(retry_delay) # 재시도 전 잠시 대기 (서버 부하 감소)
         
-        # 디버깅을 위한 출력 (실제 배포시에는 주석 처리 또는 삭제)
-        # st.write("--- 원시 주가 데이터 (수정 종가) 일부 ---")
-        # st.dataframe(pivot_df.head())
-        # st.write("--- 정규화된 주가 데이터 일부 ---")
-        # st.dataframe(normalized_df.head())
-        # st.write("--- 정규화된 데이터 컬럼 ---")
-        # st.write(normalized_df.columns.tolist())
+        if not data_loaded:
+            st.error(f"🔴 **{company_name}** (`{ticker}`) 데이터를 {max_retries}번 시도 후에도 가져오지 못했습니다. 티커를 확인해주세요.")
+        
+        progress_bar.progress((i + 1) / total_tickers)
+    
+    progress_bar.empty() # 진행률 바 제거
+    return all_adj_close_data
 
-        if not normalized_df.empty:
-            st.subheader('📊 최근 3년 글로벌 시총 Top 기업 주가 변화 (정규화)')
-            st.line_chart(normalized_df)
+# --- 4. 데이터 로딩 실행 ---
+with st.spinner("🚀 주식 데이터를 불러오고 있습니다..."):
+    stock_data = load_stock_data(TOP_COMPANIES_TICKERS, START_DATE, END_DATE)
 
-            st.subheader('🔍 각 기업별 주가 변화 상세 보기 (정규화)')
-            selectable_companies = [col for col in normalized_df.columns if col in top_10_tickers.keys()]
-            if selectable_companies:
-                selected_company = st.selectbox('기업 선택:', selectable_companies)
-                if selected_company:
-                    st.line_chart(normalized_df[[selected_company]])
+# --- 5. 데이터 처리 및 시각화 ---
+if stock_data: # 하나라도 성공적으로 로드된 데이터가 있다면
+    # 딕셔너리의 Series들을 concat하여 DataFrame 생성
+    # 이때 인덱스(날짜)를 기준으로 자동으로 정렬되며, 누락된 날짜는 NaN으로 채워집니다.
+    raw_df = pd.concat(stock_data.values(), axis=1)
+    raw_df.columns = stock_data.keys() # 컬럼 이름을 기업 이름으로 설정
+
+    if not raw_df.empty:
+        # 모든 값이 NaN인 행은 제거 (거래가 없는 날짜)
+        raw_df = raw_df.dropna(how='all')
+
+        if not raw_df.empty:
+            # 정규화된 주가 데이터 생성 (첫 유효값 기준)
+            # 각 컬럼(기업)의 첫 번째 유효한 값을 찾아 이를 100으로 설정하여 정규화
+            normalized_df = pd.DataFrame()
+            if not raw_df.empty:
+                # 각 컬럼의 첫 번째 유효한 값으로 나누어 정규화
+                # 주의: 첫 번째 유효한 인덱스가 다를 수 있으므로, 각 컬럼별로 첫 유효값을 찾아서 나눔
+                initial_values = raw_df.apply(lambda col: col.dropna().iloc[0] if not col.dropna().empty else pd.NA)
+                
+                # initial_values에 NaN이 아닌 값이 있는 컬럼만 정규화 대상
+                valid_initial_values = initial_values.dropna()
+
+                if not valid_initial_values.empty:
+                    normalized_df = raw_df[valid_initial_values.index] / valid_initial_values * 100
+                    # 정규화 후에도 모든 값이 NaN인 컬럼이 있다면 제거
+                    normalized_df = normalized_df.dropna(axis=1, how='all')
+                else:
+                    st.warning("경고: 정규화를 위한 초기 유효값을 찾을 수 없습니다. 모든 데이터가 NaN일 수 있습니다.")
+            
+            if not normalized_df.empty:
+                st.subheader('📊 지난 3년간 글로벌 Top 기업 주가 변화 (정규화)')
+                st.line_chart(normalized_df)
+
+                st.subheader('🔍 개별 기업 주가 변화 상세 보기 (정규화)')
+                # normalized_df의 실제 컬럼에서 선택 가능한 기업 리스트 생성
+                selectable_companies = normalized_df.columns.tolist()
+                if selectable_companies:
+                    selected_company = st.selectbox('기업을 선택하세요:', selectable_companies)
+                    if selected_company:
+                        st.line_chart(normalized_df[[selected_company]])
+                else:
+                    st.warning("선택할 수 있는 기업 데이터가 없습니다. 모든 기업의 데이터 로딩에 실패했을 수 있습니다.")
+
+                st.subheader('📋 원시 주가 데이터 (조정 종가)')
+                st.dataframe(raw_df)
             else:
-                st.warning("선택할 수 있는 기업 데이터가 없습니다. 모든 기업의 데이터 로딩에 실패했을 수 있습니다.")
-
-            st.subheader('📋 원시 주가 데이터 (수정 종가)')
-            st.dataframe(pivot_df)
+                st.info("⚠️ 정규화된 주가 데이터를 생성할 수 없습니다. 원시 데이터를 확인해주세요.")
         else:
-            st.info("⚠️ 정규화된 주가 데이터가 없습니다. 데이터를 다시 확인해주세요.")
+            st.info("⚠️ 데이터 로딩은 성공했으나, 유효한 거래일 데이터가 없습니다.")
     else:
         st.info("⚠️ 성공적으로 데이터를 가져왔으나, 최종 데이터 프레임이 비어 있습니다. 모든 기업의 데이터가 누락되었을 수 있습니다.")
 
 else:
-    st.error("❌ 시각화할 주가 데이터가 없습니다. Top 기업 티커를 확인하거나, 데이터 로딩 오류를 해결해주세요.")
+    st.error("❌ 시각화할 주가 데이터가 없습니다. 티커를 확인하거나, 데이터 로딩 오류를 해결해주세요.")
 
----
-
-### 배포 전 확인 사항
-
-1.  **`requirements.txt` 파일 업데이트:**
-    Streamlit Cloud에 배포하기 전에, GitHub 저장소의 `requirements.txt` 파일에 다음 내용이 포함되어 있는지 확인하세요.
-    ```
-    streamlit
-    yfinance==0.2.38 # 현재 가장 안정적인 버전으로 명시
-    pandas
-    ```
-    (더 최신 버전이 나왔고 안정적이라고 판단되면 `yfinance>=0.2.38`로 변경할 수 있습니다.)
-
-2.  **로컬 테스트:**
-    코드를 로컬에서 먼저 실행하여 정상적으로 작동하는지 확인하는 것이 가장 중요합니다. 로컬에서 문제가 해결되면 Streamlit Cloud에 배포했을 때도 해결될 가능성이 높습니다.
-
-3.  **Top 10 기업 티커 정확성:**
-    `top_10_tickers` 딕셔너리에 있는 기업 티커가 정확한지 다시 한번 확인해주세요. 특히 해외 주식의 경우 티커 형식이 다를 수 있습니다 (예: 사우디 아람코의 `2222.SR`).
-
-이 코드로 문제가 해결되기를 바랍니다! 추가적인 문제가 발생하면 알려주세요.
+st.markdown("---")
+st.markdown("""
+**참고 사항:**
+* 글로벌 시가총액 Top 기업은 실시간으로 변동합니다. `TOP_COMPANIES_TICKERS` 변수를 주기적으로 업데이트하는 것이 좋습니다.
+* `yfinance`는 비공식 Yahoo Finance API를 사용하므로, 간헐적인 서비스 불안정이나 요청 제한이 있을 수 있습니다. 재시도 로직이 이를 완화하는 데 도움을 줍니다.
+* 한국 주식(`005930.KS`)이나 사우디 아람코(`2222.SR`)처럼 미국 외 주식은 티커 형식이 다를 수 있으니 주의하세요.
+""")
