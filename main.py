@@ -2,29 +2,66 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 
-# 앱 제목
-st.title("🌴 캘리포니아 여행 & 맛집 가이드")
-st.markdown("미국 캘리포니아의 주요 관광지와 그 근처의 맛집 정보를 지도와 함께 만나보세요! 🍔🌮🍷")
-
-# 관광지 및 맛집 정보
+# 주요 관광지 및 맛집 정보
 locations = [
     {
-        "name": "골든게이트 브릿지",
-        "city": "샌프란시스코",
+        "name": "San Francisco - Golden Gate Bridge",
+        "description": "세계적으로 유명한 붉은 다리! 멋진 풍경과 사진 명소로 유명합니다.",
+        "restaurant": "Tartine Bakery - 신선한 빵과 디저트가 일품!",
         "lat": 37.8199,
-        "lon": -122.4783,
-        "desc": "샌프란시스코의 상징인 붉은색 대교로, 멋진 전경과 사진 명소로 유명해요.",
-        "food": ["Scoma’s – 해산물 레스토랑", "Boudin Bakery – 클램차우더로 유명한 빵집"]
+        "lon": -122.4783
     },
     {
-        "name": "유니버설 스튜디오 할리우드",
-        "city": "로스앤젤레스",
-        "lat": 34.1381,
-        "lon": -118.3534,
-        "desc": "할리우드의 영화 세트장을 배경으로 한 테마파크로, 스릴 넘치는 놀이기구가 가득!",
-        "food": ["In-N-Out Burger – 정통 캘리포니아 햄버거 체인", "NBC Sports Grill & Brew – 미국식 바비큐"]
+        "name": "Los Angeles - Hollywood Sign",
+        "description": "헐리우드의 상징적인 간판! 근처에는 전망 좋은 하이킹 코스도 있어요.",
+        "restaurant": "In-N-Out Burger - 캘리포니아를 대표하는 수제버거 맛집!",
+        "lat": 34.1341,
+        "lon": -118.3215
     },
     {
-        "name": "요세미티 국립공원",
-        "city": "요세미티",
-        "lat"
+        "name": "San Diego - La Jolla Cove",
+        "description": "바다사자와 해양 생물을 가까이에서 볼 수 있는 아름다운 해변.",
+        "restaurant": "George's at the Cove - 오션뷰와 신선한 해산물이 매력적인 고급 레스토랑.",
+        "lat": 32.8503,
+        "lon": -117.2720
+    },
+    {
+        "name": "Yosemite National Park",
+        "description": "대자연이 주는 경이로움! 폭포와 절벽, 하이킹 코스로 유명한 국립공원.",
+        "restaurant": "The Ahwahnee Dining Room - 공원 내 최고급 다이닝 스팟!",
+        "lat": 37.8651,
+        "lon": -119.5383
+    },
+    {
+        "name": "Santa Barbara",
+        "description": "스페인풍 건축과 아름다운 해변이 어우러진 여유로운 도시.",
+        "restaurant": "Brophy Bros - 항구 근처에서 먹는 신선한 해산물 요리.",
+        "lat": 34.4208,
+        "lon": -119.6982
+    }
+]
+
+st.title("\U0001F5FA 캘리포니아 여행 가이드 ✨")
+st.markdown("캘리포니아의 명소와 맛집 정보를 한눈에 확인해보세요!")
+
+# 지도 생성
+m = folium.Map(location=[36.7783, -119.4179], zoom_start=6)
+
+# 마커 추가
+for loc in locations:
+    folium.Marker(
+        location=[loc["lat"], loc["lon"]],
+        popup=f"<b>{loc['name']}</b><br>{loc['description']}<br><i>맛집 추천: {loc['restaurant']}</i>",
+        tooltip=loc["name"]
+    ).add_to(m)
+
+# 스트림릿에 지도 표시
+st_data = st_folium(m, width=700, height=500)
+
+# 관광지 리스트
+st.subheader("\U0001F3D6 주요 명소 및 맛집 요약")
+for loc in locations:
+    st.markdown(f"### {loc['name']}")
+    st.markdown(f"- 설명: {loc['description']}")
+    st.markdown(f"- 맛집 추천: **{loc['restaurant']}**")
+    st.markdown("---")
