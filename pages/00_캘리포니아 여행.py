@@ -5,10 +5,10 @@ import pandas as pd
 
 st.set_page_config(page_title="캘리포니아 관광 가이드", layout="wide")
 
-st.title("🌴 캘리포니아 관광 & 맛집 & 숙소 가이드")
+st.title("🌴 캘리포니아 관광 & 맛집 & 숙소 & 교통 가이드")
 st.markdown("""
 미국 서부의 보석, **캘리포니아** 🏄‍♀️  
-관광명소부터 현지인 맛집, 그리고 편안한 숙소까지, 이 가이드 하나면 여행 준비 끝!
+관광명소부터 현지인 맛집, 편안한 숙소, 그리고 편리한 교통 정보까지, 이 가이드 하나면 여행 준비 끝!
 """)
 
 # 관광지, 맛집, 숙소 데이터 (DataFrame으로 관리)
@@ -119,6 +119,28 @@ if not filtered_df.empty:
         st.markdown(f"- **{row['name']}** ({row['type']}): {row['desc']}")
 else:
     st.info("선택하신 조건에 해당하는 장소가 없습니다. 다른 필터를 시도해 보세요.")
+
+st.markdown("---")
+
+### 🚗 캘리포니아 교통 정보
+
+st.markdown("캘리포니아는 넓은 지역에 다양한 볼거리가 흩어져 있어, 효율적인 교통 수단 선택이 중요합니다.")
+
+st.subheader("🚘 렌터카")
+st.markdown("자유로운 여행을 원한다면 렌터카가 가장 좋은 선택입니다. 하지만 대도시에서는 교통 체증과 주차 요금을 고려해야 합니다.")
+st.markdown("[Google 지도에서 렌터카 검색하기](https://www.google.com/maps?q=렌터카)")
+
+st.subheader("🚌 대중교통")
+st.markdown("대도시(샌프란시스코, 로스앤젤레스, 샌디에이고)에서는 지하철, 버스 등 대중교통 시스템이 잘 갖춰져 있습니다. 하지만 도시 간 이동에는 불편할 수 있습니다.")
+st.markdown("[Google 지도 대중교통 길찾기](https://www.google.com/maps?q=대중교통)")
+
+st.subheader("✈️ 항공편")
+st.markdown("도시 간 이동 시에는 항공편이 가장 빠르고 편리합니다. 캘리포니아 주요 도시에는 국제공항이 있습니다.")
+st.markdown("[Google 항공편 검색](https://www.google.com/flights)")
+
+st.subheader("🚆 기차")
+st.markdown("암트랙(Amtrak) 기차를 이용하면 캘리포니아의 아름다운 풍경을 감상하며 이동할 수 있습니다. 하지만 시간이 오래 걸릴 수 있습니다.")
+st.markdown("[암트랙(Amtrak) 웹사이트](https://www.amtrak.com/)")
 
 st.markdown("---")
 
