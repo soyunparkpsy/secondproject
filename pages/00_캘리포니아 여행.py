@@ -3,13 +3,20 @@ import folium
 from streamlit_folium import st_folium
 import pandas as pd
 
-st.set_page_config(page_title="캘리포니아 관광 가이드", layout="wide")
+st.set_page_config(page_title="캘리포니아 여행 가이드", layout="wide")
 
-st.title("🌴 캘리포니아 관광 & 맛집 & 숙소 & 교통 가이드")
+st.title("🌴 캘리포니아 여행 가이드")
 st.markdown("""
 미국 서부의 보석, **캘리포니아** 🏄‍♀️  
 관광명소부터 현지인 맛집, 편안한 숙소, 그리고 편리한 교통 정보까지, 이 가이드 하나면 여행 준비 끝!
 """)
+
+# 캘리포니아 홍보 영상 (YouTube 임베드)
+st.subheader("캘리포니아의 매력에 빠져보세요! 🎬")
+# 여기에 실제 캘리포니아 홍보 영상의 YouTube ID를 넣어주세요.
+video_id = "iM13H9HfRhQ"  # YouTube 로고 영상 (임시)
+st.video(f"https://www.youtube.com/watch?v={video_id}")
+st.markdown("---")
 
 # 관광지, 맛집, 숙소 데이터 (DataFrame으로 관리)
 locations_data = {
@@ -71,16 +78,16 @@ filtered_df = df.copy()
 if selected_city != "전체":
     # 도시별 장소 분류 로직 업데이트 (숙소 포함)
     if selected_city == "샌프란시스코":
-        filtered_df = filtered_df[filtered_df["name"].isin(["샌프란시스코 금문교", "인앤아웃 버거 (In-N-Out)", "필즈 커피 (Philz Coffee)", "페어몬트 샌프란시스코"])]
+        filtered_df = filtered_df[(filtered_df["name"].isin(["샌프란시스코 금문교", "인앤아웃 버거 (In-N-Out)", "필즈 커피 (Philz Coffee)", "페어몬트 샌프란시스코"]))]
     elif selected_city == "로스앤젤레스":
-        filtered_df = filtered_df[filtered_df["name"].isin(["디즈니랜드 리조트", "Roscoe's Chicken and Waffles", "그리피스 천문대", "산타모니카 피어", "게티 센터", "더 비벌리 힐스 호텔"])]
+        filtered_df = filtered_df[(filtered_df["name"].isin(["디즈니랜드 리조트", "Roscoe's Chicken and Waffles", "그리피스 천문대", "산타모니카 피어", "게티 센터", "더 비벌리 힐스 호텔"]))]
     elif selected_city == "요세미티":
-        filtered_df = filtered_df[filtered_df["name"].isin(["요세미티 국립공원", "요세미티 밸리 롯지"])]
+        filtered_df = filtered_df[(filtered_df["name"].isin(["요세미티 국립공원", "요세미티 밸리 롯지"]))]
     elif selected_city == "샌디에이고":
-        filtered_df = filtered_df[filtered_df["name"].isin(["샌디에이고 라호야 비치", "맨체스터 그랜드 하얏트 샌디에이고"])]
+        filtered_df = filtered_df[(filtered_df["name"].isin(["샌디에이고 라호야 비치", "맨체스터 그랜드 하얏트 샌디에이고"]))]
 
 if selected_type != "전체":
-    filtered_df = filtered_df[filtered_df["type"] == selected_type]
+    filtered_df = filtered_df[(filtered_df["type"] == selected_type)]
 
 # 지도 초기화 (필터링된 데이터의 중앙을 기준으로)
 if not filtered_df.empty:
@@ -98,7 +105,7 @@ for idx, loc in filtered_df.iterrows():
         icon_color = "red"
     else: # 숙소
         icon_color = "green" # 숙소는 초록색으로 표시
-    
+
     folium.Marker(
         location=[loc["lat"], loc["lon"]],
         popup=f"<b>{loc['name']}</b><br>{loc['desc']}",
