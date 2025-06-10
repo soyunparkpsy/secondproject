@@ -1,126 +1,92 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import plotly.graph_objects as go
+import plotly.express as px
 from datetime import datetime, timedelta
 
 st.set_page_config(layout="wide")
 
-st.title("글로벌 시총 Top 10 기업 주가 변화 시각화 (최근 3년)")
+st.title("글로벌 시가총액 TOP 10 기업 주가 변화 (최근 3년)")
 
-# Define the top 10 companies and their tickers (as of June 2025 - approximate)
-# Note: Market cap ranks fluctuate. This is a representative list.
-# Using BRK-B for Berkshire Hathaway as BRK-A is less liquid and very high price.
-# Saudi Aramco (2222.SR) might have issues with yfinance depending on its API access for non-US stocks.
-# If 2222.SR fails, you might replace it with 'TSLA' or 'WMT'.
-companies = {
-    "Microsoft": "MSFT",
-    "NVIDIA": "NVDA",
-    "Apple": "AAPL",
-    "Amazon": "AMZN",
-    "Alphabet (Google)": "GOOGL",
-    "Meta Platforms": "META",
-    "Saudi Aramco": "2222.SR", # May need to be replaced if yfinance has issues
-    "Broadcom": "AVGO",
-    "TSMC": "TSM",
-    "Berkshire Hathaway": "BRK-B"
+# --- 1. 글로벌 시가총액 TOP 10 기업 티커 수동 정의 (정확한 최신 정보는 별도 확인 필요) ---
+# 이 리스트는 변동될 수 있으므로, 실제 애플리케이션 배포 시 최신 정보로 업데이트하는 것이 좋습니다.
+# 2025년 6월 현재 기준(예상)으로 임시 티커 사용
+top_10_tickers = {
+    "애플": "AAPL",
+    "마이크로소프트": "MSFT",
+    "엔비디아": "NVDA",
+    "알파벳 (구글)": "GOOGL", # 또는 GOOG
+    "아마존": "AMZN",
+    "사우디 아람코": "2222.SR", # 사우디 거래소 티커
+    "메타 플랫폼스": "META",
+    "버크셔 해서웨이": "BRK-B", # B클래스 주식
+    "일라이 릴리": "LLY",
+    "테슬라": "TSLA"
 }
 
-# Calculate date range for the last 3 years
+# --- 2. 날짜 범위 설정 (최근 3년) ---
 end_date = datetime.now()
-start_date = end_date - timedelta(days=3 * 365) # Approximately 3 years
+start_date = end_date - timedelta(days=3*365) # 대략 3년
 
-# @st.cache_data를 사용하여 데이터를 캐싱합니다.
-# 동일한 인수로 함수가 호출될 때 네트워크 요청 없이 캐시된 데이터를 사용합니다.
-@st.cache_data(ttl=3600) # 1시간마다 캐시 갱신
-def get_stock_data(ticker, start, end):
-    """
-    주어진 티커에 대한 과거 주식 데이터를 가져옵니다.
-    데이터를 가져오는 데 실패하면 빈 Pandas Series를 반환합니다.
-    """
+st.write(f"**데이터 기간:** {start_date.strftime('%Y년 %m월 %d일')} 부터 {end_date.strftime('%Y년 %m월 %d일')} 까지")
+
+# --- 3. 주가 데이터 가져오기 및 시각화 ---
+all_data = pd.DataFrame()
+failed_downloads = []
+
+for name, ticker in top_10_tickers.items():
+    st.subheader(f"{name} ({ticker})")
     try:
-        # yfinance.download() 시도
-        data = yf.download(ticker, start=start, end=end, progress=False) # progress=False로 다운로드 진행바 숨김
+        data = yf.download(ticker, start=start_date, end=end_date)
         if not data.empty:
-            # 여기를 'Adj Close'에서 'Close'로 변경했습니다.
-            return data['Close']
+            # 종가 (Close) 데이터만 사용
+            close_prices = data['Close'].rename(name)
+            if all_data.empty:
+                all_data = pd.DataFrame(close_prices)
+            else:
+                all_data = pd.merge(all_data, close_prices, left_index=True, right_index=True, how='outer')
+
+            # 개별 기업 주가 시각화 (선택 사항)
+            fig_individual = px.line(data, y='Close', title=f'{name} ({ticker}) 주가 변화')
+            st.plotly_chart(fig_individual, use_container_width=True)
         else:
-            # 데이터프레임이 비어있는 경우 (예: 잘못된 티커, 데이터 없음)
-            st.warning(f"경고: {ticker}에 대한 데이터를 찾을 수 없거나 데이터가 비어 있습니다.")
-            return pd.Series()
+            st.warning(f"**경고:** {name} ({ticker}) 에 대한 데이터를 찾을 수 없습니다. 티커를 확인해주세요.")
+            failed_downloads.append(name)
     except Exception as e:
-        # 데이터 가져오기 중 예외 발생 시 (네트워크 오류, API 문제 등)
-        st.error(f"오류: {ticker} 데이터를 가져오는 데 실패했습니다. 자세한 내용: {e}")
-        return pd.Series()
+        st.error(f"**오류:** {name} ({ticker}) 데이터 다운로드 중 오류 발생: {e}")
+        failed_downloads.append(name)
 
-# Create a list to hold the stock data
-all_stock_data = {}
-failed_companies = [] # 데이터를 가져오는 데 실패한 기업을 추적
+st.header("전체 TOP 10 기업 주가 변화 비교")
 
-# Fetch data for each company
-st.write("주가 데이터를 불러오는 중입니다. 잠시만 기다려 주세요...")
-progress_bar = st.progress(0)
-total_companies = len(companies)
+if not all_data.empty:
+    # 모든 기업의 주가를 한 그래프에 시각화 (초기값을 100으로 정규화하여 비교)
+    # 정규화하여 변화율을 비교하는 것이 더 의미 있을 수 있습니다.
+    st.subheader("정규화된 주가 변화 (시작점 100 기준)")
+    normalized_data = all_data / all_data.iloc[0] * 100
 
-for i, (name, ticker) in enumerate(companies.items()):
-    st.info(f"'{name}' ({ticker}) 데이터 로딩 중...")
-    stock_data = get_stock_data(ticker, start_date, end_date)
-    if not stock_data.empty:
-        all_stock_data[name] = stock_data
-    else:
-        failed_companies.append(name)
-    progress_bar.progress((i + 1) / total_companies)
+    fig_normalized = px.line(normalized_data,
+                             title='글로벌 시가총액 TOP 10 기업 정규화된 주가 변화 (시작점 100 기준)',
+                             labels={'value': '정규화된 주가 (시작점=100)', 'index': '날짜'})
+    fig_normalized.update_layout(hovermode="x unified")
+    st.plotly_chart(fig_normalized, use_container_width=True)
 
-# 데이터 로딩 후 메시지 표시
-if failed_companies:
-    st.error(f"다음 기업의 데이터를 가져오는 데 실패했습니다: {', '.join(failed_companies)}. 잠시 후 다시 시도해 보세요.")
-    st.warning("이는 YFiance의 일시적인 문제, 네트워크 연결 불량 또는 요청 제한 때문일 수 있습니다.")
-
-if not all_stock_data:
-    st.error("모든 기업의 데이터를 가져오는 데 실패했습니다. 티커를 확인하거나 인터넷 연결을 확인하고, 잠시 후 다시 시도해 주세요.")
+    st.subheader("실제 종가 비교")
+    fig_raw = px.line(all_data,
+                      title='글로벌 시가총액 TOP 10 기업 실제 종가 변화',
+                      labels={'value': '종가', 'index': '날짜'})
+    fig_raw.update_layout(hovermode="x unified")
+    st.plotly_chart(fig_raw, use_container_width=True)
 else:
-    # Combine all stock data into a single DataFrame
-    df_combined = pd.DataFrame(all_stock_data)
+    st.warning("다운로드 가능한 주식 데이터가 없습니다. 티커 목록을 확인해주세요.")
 
-    # Normalize data to show percentage change from the start date
-    # This makes it easier to compare performance across different stock prices
-    # 시작일의 데이터가 0이거나 NaN이면 문제가 발생할 수 있으므로 필터링
-    df_normalized = df_combined.apply(lambda x: (x / x.iloc[0]) * 100 if not x.empty and x.iloc[0] != 0 else x)
-    # NaN이 발생할 경우 0으로 채우거나 이전 값으로 채우는 등의 추가 처리 고려 가능
-
-    st.subheader("최근 3년간 주가 변화 (시작일 기준 백분율)")
-
-    # Plotting with Plotly
-    fig = go.Figure()
-    for col in df_normalized.columns:
-        # 데이터가 NaN이 아닌 경우에만 플로팅
-        if not df_normalized[col].dropna().empty:
-            fig.add_trace(go.Scatter(x=df_normalized.index, y=df_normalized[col], mode='lines', name=col))
-
-    fig.update_layout(
-        title="글로벌 시총 Top 10 기업 주가 변화 (시작일 기준 100%)",
-        xaxis_title="날짜",
-        yaxis_title="주가 변화 (%)",
-        hovermode="x unified",
-        legend_title="기업",
-        height=600
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    # 여기를 "원시 주가 데이터 (조정 종가)"에서 "원시 주가 데이터 (종가)"로 변경했습니다.
-    st.subheader("원시 주가 데이터 (종가)")
-    st.dataframe(df_combined)
-
-    st.subheader("정규화된 주가 데이터 (시작일 기준 백분율)")
-    st.dataframe(df_normalized)
+if failed_downloads:
+    st.error(f"다음 기업의 데이터 다운로드에 실패했습니다: {', '.join(failed_downloads)}")
 
 st.markdown("""
 ---
 **참고:**
-* 주가 데이터는 `yfinance` 라이브러리를 통해 가져옵니다.
-* **이 시각화는 배당금, 주식 분할 등을 조정한 '수정 종가'가 아닌, 실제 거래된 가격인 '종가'를 사용합니다.**
-* "글로벌 시총 Top 10 기업" 목록은 시장 상황에 따라 변동될 수 있습니다. 본 시각화는 2025년 6월 기준의 대표적인 기업 목록을 사용합니다.
-* 주가 변화는 시작일(3년 전)을 100%로 기준으로 하여 계산된 백분율입니다.
-* 데이터 로딩에 문제가 발생할 경우, 이는 `yfinance`의 일시적인 API 제한 또는 Yahoo Finance 서버 문제일 가능성이 높습니다.
-* `Saudi Aramco (2222.SR)` 데이터 로딩에 문제가 발생할 경우, 미국 증시에 상장된 다른 상위 기업(예: `TSLA` (Tesla) 또는 `WMT` (Walmart))으로 대체하는 것을 고려해보세요.
+* 상위 10개 기업의 티커는 시시각각 변동될 수 있으므로, 실제 배포 시 최신 정보로 업데이트하는 것이 중요합니다.
+* yfinance는 비공식 라이브러리이므로 데이터의 정확성 및 안정성에 한계가 있을 수 있습니다.
+* 사우디 아람코(2222.SR)와 같은 해외 거래소 주식은 yfinance에서 데이터를 제공하지 않을 수 있습니다.
+* 데이터 다운로드 속도는 네트워크 환경 및 yfinance 서버 상태에 따라 달라질 수 있습니다.
 """)
