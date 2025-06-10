@@ -14,8 +14,8 @@ st.markdown("""
 # 캘리포니아 홍보 영상 (YouTube 임베드)
 st.subheader("캘리포니아의 매력에 빠져보세요! 🎬")
 # 여기에 실제 캘리포니아 홍보 영상의 YouTube ID를 넣어주세요.
-video_id = "I6kvtPRnwc"  # YouTube 로고 영상 (임시)
-st.video(f"https://www.youtube.com/watch?v=I6kvtPRnwc")
+video_id = "6I6kvtPRnwc"  # YouTube 로고 영상 (임시)
+st.video(f"https://www.youtube.com/watch?v=6I6kvtPRnwc")
 st.markdown("---")
 
 # 관광지, 맛집, 숙소 데이터 (DataFrame으로 관리)
