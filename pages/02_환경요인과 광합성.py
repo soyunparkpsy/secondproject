@@ -35,95 +35,99 @@ st.markdown("""
 
 st.markdown("---")
 
-## 환경 요인 조절
+## 환경 요인 조절 및 그래프
 
-# 슬라이더를 사용하여 각 환경 요인 조절
+# 현재 설정된 환경 요인으로 광합성량 계산
+st.subheader(f"현재 총 광합성량: **{calculate_photosynthesis(500, 25, 400):.2f}** 단위 (기본값)") # 기본값 표시
+
+# 1. 빛의 세기 조절 및 그래프
+st.markdown("### 💡 빛의 세기")
 light_intensity = st.slider(
-    "💡 빛의 세기 (lux)",
+    "빛의 세기 (lux)",
     min_value=0,
     max_value=1000,
     value=500,
     step=10,
+    key="light_slider", # 고유한 키 지정
     help="빛의 세기가 강할수록 광합성량이 증가하지만, 일정 수준 이상에서는 포화됩니다."
 )
 
+# 빛의 세기 변화에 따른 광합성량 그래프
+fig_light, ax_light = plt.subplots(figsize=(10, 4))
+light_values = np.linspace(0, 1000, 100)
+photosynthesis_vs_light = [calculate_photosynthesis(l, temperature, co2_concentration) for l in light_values] # 다른 요인은 현재 슬라이더 값 사용
+ax_light.plot(light_values, photosynthesis_vs_light, color='orange')
+ax_light.axvline(x=light_intensity, color='r', linestyle='--', label=f'현재 설정: {light_intensity} lux')
+ax_light.set_title("빛의 세기에 따른 광합성량")
+ax_light.set_xlabel("빛의 세기 (lux)")
+ax_light.set_ylabel("광합성량")
+ax_light.grid(True)
+ax_light.legend()
+st.pyplot(fig_light)
+plt.close(fig_light) # 메모리 해제
+
+st.markdown("---")
+
+# 2. 온도 조절 및 그래프
+st.markdown("### 🌡️ 온도")
 temperature = st.slider(
-    "🌡️ 온도 (°C)",
+    "온도 (°C)",
     min_value=0,
     max_value=40,
     value=25,
     step=1,
+    key="temp_slider", # 고유한 키 지정
     help="광합성은 최적의 온도에서 가장 활발하며, 너무 낮거나 높으면 감소합니다."
 )
 
+# 온도 변화에 따른 광합성량 그래프
+fig_temp, ax_temp = plt.subplots(figsize=(10, 4))
+temp_values = np.linspace(0, 40, 100)
+photosynthesis_vs_temp = [calculate_photosynthesis(light_intensity, t, co2_concentration) for t in temp_values] # 다른 요인은 현재 슬라이더 값 사용
+ax_temp.plot(temp_values, photosynthesis_vs_temp, color='red')
+ax_temp.axvline(x=temperature, color='r', linestyle='--', label=f'현재 설정: {temperature} °C')
+ax_temp.set_title("온도에 따른 광합성량")
+ax_temp.set_xlabel("온도 (°C)")
+ax_temp.set_ylabel("광합성량")
+ax_temp.grid(True)
+ax_temp.legend()
+st.pyplot(fig_temp)
+plt.close(fig_temp) # 메모리 해제
+
+st.markdown("---")
+
+# 3. 이산화 탄소 농도 조절 및 그래프
+st.markdown("### 💨 이산화 탄소 농도")
 co2_concentration = st.slider(
-    "💨 이산화 탄소 농도 (ppm)",
+    "이산화 탄소 농도 (ppm)",
     min_value=0,
     max_value=1000,
     value=400,
     step=10,
+    key="co2_slider", # 고유한 키 지정
     help="이산화 탄소 농도가 높을수록 광합성량이 증가하지만, 일정 수준 이상에서는 포화됩니다."
 )
 
+# CO2 농도 변화에 따른 광합성량 그래프
+fig_co2, ax_co2 = plt.subplots(figsize=(10, 4))
+co2_values = np.linspace(0, 1000, 100)
+photosynthesis_vs_co2 = [calculate_photosynthesis(light_intensity, temperature, c) for c in co2_values] # 다른 요인은 현재 슬라이더 값 사용
+ax_co2.plot(co2_values, photosynthesis_vs_co2, color='green')
+ax_co2.axvline(x=co2_concentration, color='r', linestyle='--', label=f'현재 설정: {co2_concentration} ppm')
+ax_co2.set_title("이산화 탄소 농도에 따른 광합성량")
+ax_co2.set_xlabel("이산화 탄소 농도 (ppm)")
+ax_co2.set_ylabel("광합성량")
+ax_co2.grid(True)
+ax_co2.legend()
+st.pyplot(fig_co2)
+plt.close(fig_co2) # 메모리 해제
+
 st.markdown("---")
 
-## 광합성량 결과
-
-# 현재 설정된 환경 요인으로 광합성량 계산
-current_photosynthesis = calculate_photosynthesis(light_intensity, temperature, co2_concentration)
-
-st.subheader(f"현재 광합성량: **{current_photosynthesis:.2f}** 단위")
-
-# 광합성량 그래프 그리기
-st.subheader("환경 요인 변화에 따른 광합성량 그래프")
-
-# 각 요인별 광합성량 변화 시뮬레이션
-# 빛의 세기 변화에 따른 광합성량
-light_values = np.linspace(0, 1000, 100)
-photosynthesis_vs_light = [calculate_photosynthesis(l, temperature, co2_concentration) for l in light_values]
-
-# 온도 변화에 따른 광합성량
-temp_values = np.linspace(0, 40, 100)
-photosynthesis_vs_temp = [calculate_photosynthesis(light_intensity, t, co2_concentration) for t in temp_values]
-
-# CO2 농도 변화에 따른 광합성량
-co2_values = np.linspace(0, 1000, 100)
-photosynthesis_vs_co2 = [calculate_photosynthesis(light_intensity, temperature, c) for c in co2_values]
-
-fig, ax = plt.subplots(3, 1, figsize=(10, 15))
-fig.suptitle("각 환경 요인 변화에 따른 광합성량 (다른 요인 고정)", fontsize=16)
-
-# 빛의 세기 그래프
-ax[0].plot(light_values, photosynthesis_vs_light, color='orange')
-ax[0].axvline(x=light_intensity, color='r', linestyle='--', label=f'현재 빛: {light_intensity} lux')
-ax[0].set_title("빛의 세기에 따른 광합성량")
-ax[0].set_xlabel("빛의 세기 (lux)")
-ax[0].set_ylabel("광합성량")
-ax[0].grid(True)
-ax[0].legend()
-
-# 온도 그래프
-ax[1].plot(temp_values, photosynthesis_vs_temp, color='red')
-ax[1].axvline(x=temperature, color='r', linestyle='--', label=f'현재 온도: {temperature} °C')
-ax[1].set_title("온도에 따른 광합성량")
-ax[1].set_xlabel("온도 (°C)")
-ax[1].set_ylabel("광합성량")
-ax[1].grid(True)
-ax[1].legend()
-
-# CO2 농도 그래프
-ax[2].plot(co2_values, photosynthesis_vs_co2, color='green')
-ax[2].axvline(x=co2_concentration, color='r', linestyle='--', label=f'현재 CO2: {co2_concentration} ppm')
-ax[2].set_title("이산화 탄소 농도에 따른 광합성량")
-ax[2].set_xlabel("이산화 탄소 농도 (ppm)")
-ax[2].set_ylabel("광합성량")
-ax[2].grid(True)
-ax[2].legend()
-
-plt.tight_layout(rect=[0, 0.03, 1, 0.96]) # 전체 레이아웃 조정
-st.pyplot(fig)
+# 현재 설정된 환경 요인으로 최종 광합성량 계산 및 표시
+final_photosynthesis = calculate_photosynthesis(light_intensity, temperature, co2_concentration)
+st.subheader(f"✅ 현재 설정된 환경 요인으로 계산된 광합성량: **{final_photosynthesis:.2f}** 단위")
 
 st.markdown("---")
 st.info("이 시뮬레이션은 광합성 원리를 이해하기 위한 **매우 단순화된 모델**입니다. 실제 식물의 광합성은 훨씬 더 복잡하며, 다양한 생화학적 과정과 환경 요인들이 상호작용합니다.")
-
 st.markdown("궁금한 점이 있으시면 언제든지 질문해주세요!")
