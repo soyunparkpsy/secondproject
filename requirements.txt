@@ -2,3 +2,4 @@ folium
 streamlit-folium
 yfinance
 plotly
+matplotlib
