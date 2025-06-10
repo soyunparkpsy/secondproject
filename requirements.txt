@@ -1,5 +1,8 @@
 folium
 streamlit-folium
-yfinance>=0.2.38 #
+streamlit
+yfinance==0.2.38 # 2024년 6월 현재 안정적이며 많이 사용되는 버전
+# yfinance>=0.2.38  # 최신 버전을 선호한다면 이렇게
+pandas
 plotly
 matplotlib
