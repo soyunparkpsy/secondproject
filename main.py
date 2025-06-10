@@ -1,67 +1,40 @@
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
+import pandas as pd # 데이터 관리를 위해 pandas 추가
 
-# 주요 관광지 및 맛집 정보
-locations = [
-    {
-        "name": "San Francisco - Golden Gate Bridge",
-        "description": "세계적으로 유명한 붉은 다리! 멋진 풍경과 사진 명소로 유명합니다.",
-        "restaurant": "Tartine Bakery - 신선한 빵과 디저트가 일품!",
-        "lat": 37.8199,
-        "lon": -122.4783
-    },
-    {
-        "name": "Los Angeles - Hollywood Sign",
-        "description": "헐리우드의 상징적인 간판! 근처에는 전망 좋은 하이킹 코스도 있어요.",
-        "restaurant": "In-N-Out Burger - 캘리포니아를 대표하는 수제버거 맛집!",
-        "lat": 34.1341,
-        "lon": -118.3215
-    },
-    {
-        "name": "San Diego - La Jolla Cove",
-        "description": "바다사자와 해양 생물을 가까이에서 볼 수 있는 아름다운 해변.",
-        "restaurant": "George's at the Cove - 오션뷰와 신선한 해산물이 매력적인 고급 레스토랑.",
-        "lat": 32.8503,
-        "lon": -117.2720
-    },
-    {
-        "name": "Yosemite National Park",
-        "description": "대자연이 주는 경이로움! 폭포와 절벽, 하이킹 코스로 유명한 국립공원.",
-        "restaurant": "The Ahwahnee Dining Room - 공원 내 최고급 다이닝 스팟!",
-        "lat": 37.8651,
-        "lon": -119.5383
-    },
-    {
-        "name": "Santa Barbara",
-        "description": "스페인풍 건축과 아름다운 해변이 어우러진 여유로운 도시.",
-        "restaurant": "Brophy Bros - 항구 근처에서 먹는 신선한 해산물 요리.",
-        "lat": 34.4208,
-        "lon": -119.6982
-    }
-]
+st.set_page_config(page_title="캘리포니아 관광 가이드", layout="wide")
 
-st.title("\U0001F5FA 캘리포니아 여행 가이드 ✨")
-st.markdown("캘리포니아의 명소와 맛집 정보를 한눈에 확인해보세요!")
+st.title("🌴 캘리포니아 관광 & 맛집 가이드")
+st.markdown("""
+미국 서부의 보석, **캘리포니아** 🏄‍♀️  
+관광명소부터 현지인 맛집까지, 이 가이드 하나면 여행 준비 끝!
+""")
 
-# 지도 생성
-m = folium.Map(location=[36.7783, -119.4179], zoom_start=6)
-
-# 마커 추가
-for loc in locations:
-    folium.Marker(
-        location=[loc["lat"], loc["lon"]],
-        popup=f"<b>{loc['name']}</b><br>{loc['description']}<br><i>맛집 추천: {loc['restaurant']}</i>",
-        tooltip=loc["name"]
-    ).add_to(m)
-
-# 스트림릿에 지도 표시
-st_data = st_folium(m, width=700, height=500)
-
-# 관광지 리스트
-st.subheader("\U0001F3D6 주요 명소 및 맛집 요약")
-for loc in locations:
-    st.markdown(f"### {loc['name']}")
-    st.markdown(f"- 설명: {loc['description']}")
-    st.markdown(f"- 맛집 추천: **{loc['restaurant']}**")
-    st.markdown("---")
+# 관광지와 맛집 데이터 (DataFrame으로 관리하여 유연성 확보)
+locations_data = {
+    "name": [
+        "샌프란시스코 금문교", "인앤아웃 버거 (In-N-Out)", "요세미티 국립공원",
+        "필즈 커피 (Philz Coffee)", "디즈니랜드 리조트", "Roscoe's Chicken and Waffles",
+        "샌디에이고 라호야 비치", "그리피스 천문대", "산타모니카 피어", "게티 센터"
+    ],
+    "type": [
+        "관광지", "맛집", "관광지", "맛집", "관광지", "맛집", "관광지", "관광지", "관광지", "관광지"
+    ],
+    "desc": [
+        "세계에서 가장 아름다운 현수교 중 하나. 인생샷 명소📸",
+        "캘리포니아의 국민버거! 비밀 메뉴 ‘애니멀 스타일’ 꼭 도전🍔",
+        "대자연의 경이로움이 펼쳐지는 절경의 국립공원⛰️",
+        "직접 블렌딩한 개성있는 커피☕ 로컬 감성 충만!",
+        "꿈과 환상의 나라! 가족 단위 여행객에게 추천🎢",
+        "프라이드 치킨 + 와플의 황홀한 조합🍗🧇",
+        "바다사자도 구경하고, 에메랄드빛 바다에서 힐링🐬",
+        "할리우드 사인을 볼 수 있는 최고의 뷰포인트. LA 야경 감상에 최고!🌃",
+        "태평양의 아름다운 노을을 감상하며 즐길 수 있는 LA 대표 해변 유원지🎡",
+        "웅장한 건축물과 세계적인 예술 작품들을 무료로 감상할 수 있는 곳🏛️"
+    ],
+    "lat": [
+        37.8199, 37.8080, 37.8651, 37.7749, 33.8121, 34.0900, 32.8500, 34.1185, 34.0089, 34.0781
+    ],
+    "lon": [
+        -122.4783, -122.4098, -119.5383, -122.4194, -117.9190, -118.
