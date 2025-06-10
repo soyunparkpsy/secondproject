@@ -5,55 +5,46 @@ import datetime
 
 st.title('글로벌 시총 Top 10 기업 주가 변화 시각화 (최근 3년)')
 
-# --- Step 1: 현재 시점의 글로벌 시총 Top 10 기업 티커를 여기에 입력하세요 ---
-# 이 리스트는 수동으로 업데이트해야 합니다.
 top_10_tickers = {
     "Apple": "AAPL",
     "Microsoft": "MSFT",
     "Alphabet (Google)": "GOOGL",
     "Amazon": "AMZN",
     "NVIDIA": "NVDA",
-    # 필요에 따라 다른 Top 10 기업 추가
-    # "Saudi Aramco": "2222.SR", # 사우디 아람코는 티커가 다를 수 있습니다.
-    # "Meta Platforms": "META",
-    # "Tesla": "TSLA",
-    # "Berkshire Hathaway": "BRK-A",
-    # "Johnson & Johnson": "JNJ"
 }
-# --------------------------------------------------------------------------
 
-# 날짜 범위 설정 (최근 3년)
 end_date = datetime.date.today()
-start_date = end_date - datetime.timedelta(days=3*365) # 대략 3년
+start_date = end_date - datetime.timedelta(days=3*365)
 
 st.write(f"데이터 조회 기간: {start_date} 부터 {end_date} 까지")
 
-# 모든 기업의 주가 데이터를 저장할 DataFrame
-all_stocks_df = pd.DataFrame()
+all_stocks_data = {} # 딕셔너리로 각 기업 데이터를 저장
 
-# 각 기업의 주가 데이터 가져오기
 for company_name, ticker in top_10_tickers.items():
     try:
-        # auto_adjust=False를 추가하여 'Adj Close' 컬럼을 명시적으로 가져오도록 합니다.
         data = yf.download(ticker, start=start_date, end=end_date, auto_adjust=False)
         
         if not data.empty and 'Adj Close' in data.columns:
-            data['Company'] = company_name
-            data['Ticker'] = ticker
-            all_stocks_df = pd.concat([all_stocks_df, data[['Adj Close', 'Company', 'Ticker']]], axis=0)
+            all_stocks_data[company_name] = data['Adj Close']
         else:
             st.warning(f"{company_name} ({ticker}) 에 대한 데이터를 가져올 수 없거나 'Adj Close' 컬럼이 없습니다.")
     except Exception as e:
         st.error(f"{company_name} ({ticker}) 데이터 로딩 중 오류 발생: {e}")
 
-if not all_stocks_df.empty:
-    # 'Adj Close' (수정 종가)를 기준으로 피봇 테이블 생성하여 시각화 용이하게 변경
-    pivot_df = all_stocks_df.pivot_table(index=all_stocks_df.index, columns='Company', values='Adj Close')
+if all_stocks_data: # 데이터가 하나라도 성공적으로 로드되었다면
+    # 딕셔너리를 DataFrame으로 변환
+    # 이 과정에서 컬럼 이름이 'Company' 이름으로 직접 매핑됩니다.
+    pivot_df = pd.DataFrame(all_stocks_data)
 
-    # 모든 주가를 첫날 가격 기준으로 정규화하여 변화율 비교
-    # 데이터가 비어있지 않은지 다시 한번 확인 후 정규화 수행
     if not pivot_df.empty:
+        # 첫날 가격 기준으로 정규화
         normalized_df = pivot_df / pivot_df.iloc[0] * 100
+
+        # 디버깅을 위한 출력 (실제 배포시에는 주석 처리 또는 삭제)
+        st.write("--- normalized_df.head() (for debugging) ---")
+        st.write(normalized_df.head())
+        st.write("--- normalized_df.columns (for debugging) ---")
+        st.write(normalized_df.columns)
 
         st.subheader('최근 3년 글로벌 시총 Top 기업 주가 변화 (정규화)')
         st.line_chart(normalized_df)
@@ -69,8 +60,7 @@ if not all_stocks_df.empty:
         st.subheader('원시 주가 데이터 (수정 종가)')
         st.dataframe(pivot_df)
     else:
-        st.info("시각화할 주가 데이터가 없습니다. 가져온 데이터가 비어 있습니다.")
-
+        st.info("모든 기업의 데이터를 가져왔으나, 최종 데이터 프레임이 비어 있습니다.")
 else:
     st.info("시각화할 주가 데이터가 없습니다. Top 10 기업 티커를 확인해주세요.")
 
